@@ -15,7 +15,6 @@ import sun.java2d.SurfaceDataProxy.CountdownTracker
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-
 class Dummy extends FunSuite with StreamingSuiteBase {
 
   test("lines in file are converted pairs with filename followed by sequence of all lines in file") {
