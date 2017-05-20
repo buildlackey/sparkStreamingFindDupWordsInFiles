@@ -1,12 +1,27 @@
-RUNNING THE PROJECT CODE 
+**RUNNING THE PROJECT CODE**
 
 Type: 
-    sbt 'runMain FindDupWordsInFiles'
+
+    sbt 'runMain FindDupWordsInFiles /tmp/someDirectory'
 
 at the shell prompt.
 
 
-ABOUT THE PROJECT 
+Wait until you see a chunk of logging output from Spark being emitted to the console.
+
+
+Then create some test data files that have repeated word counts like this: 
+
+
+    echo -e "moo cow\ncow"  > /tmp/someDirectory/file1
+    echo -e "moo moo bow\nwow"  > /tmp/someDirectory/file2
+
+After 1 and 10 seconds elapsed you  will see 'Duplicated Word Reports', as described below.
+
+
+
+
+**ABOUT THE PROJECT**
 
 This project illustrates how customized implementations of 
 org.apache.hadoop.mapreduce.RecordReader can be used in conjunction 

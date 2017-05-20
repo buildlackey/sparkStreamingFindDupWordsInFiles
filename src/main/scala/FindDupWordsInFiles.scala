@@ -29,7 +29,6 @@ object FindDupWordsInFiles {
     dir.mkdir();
 
     val conf = ConfigFactory.load
-
     val sparkConf = new SparkConf().setAppName("continuous").setMaster("local[*]")
     val ssc = new StreamingContext(sparkConf, Seconds(5))
     ssc.sparkContext.setLogLevel(conf.getString("sparkContextLogLevel"))
