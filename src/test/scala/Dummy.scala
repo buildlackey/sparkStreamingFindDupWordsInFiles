@@ -81,6 +81,7 @@ object UnderTest {
     Thread.sleep(200) // give some time to clean up (SPARK-1603)
   }
 
+
   def main(args: Array[String]): Unit = {
     var dirPath = "/tmp/blah"
     val dir: File = new File(dirPath)
