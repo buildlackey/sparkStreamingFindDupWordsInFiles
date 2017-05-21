@@ -29,7 +29,6 @@ class NonWorkingTest extends FunSuite with StreamingSuiteBase {
     confToTweak
   }
 
-
   def withFixture(test: Any): Outcome = ???
 
   test("lines in file are converted pairs with filename followed by sequence of all lines in file") {
@@ -67,25 +66,25 @@ object ResultStreamSource {
 
 case class TestInvoker(streamingContext : StreamingContext) {
 
-
   def withStreamingContext(batchDuration: Duration,
                            blockToRun: (StreamingContext) => DStream[(String, String)],
                            numExpectedOutputs : Int,
                            logLevel: String = "warn"): Unit = {
     val stream: DStream[(String, String)] = blockToRun(streamingContext)
+    val buf: ListBuffer[(String, String)] = new ListBuffer[(String, String)]()
      stream.foreachRDD {
       rdd => {
         rdd.zipWithIndex().foreach { case ((fileName, lineContent), count: Long) =>
-          val oos = ResultStreamSource.getOutputStream
           println(s"filename: $fileName")
           println(s"lineContent: $lineContent")
-          oos.writeObject((fileName,lineContent))
+          buf += ((fileName, lineContent))
           if (count == (numExpectedOutputs-1)) {
+            val oos = ResultStreamSource.getOutputStream
+            oos.writeObject( buf.toList )
             oos.close()
             println("CLOSED")
           }
         }
-
       }
     }
   }
