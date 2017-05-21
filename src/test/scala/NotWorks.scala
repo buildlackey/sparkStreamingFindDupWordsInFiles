@@ -41,6 +41,10 @@ class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase 
     ssc = new StreamingContext(sc, Seconds(1))
     val invoker = new InputStreamVerifier()
     invoker.invokeTest(ssc)
+    Thread.sleep(1500) // give the code that creates the DStream time to start up
+    new PrintWriter(dirPath + "/some.input.for.the.test1") { write("moo cow\brown cow"); close() }
+    new PrintWriter(dirPath + "/some.input.for.the.test2") { write("moo cow\brown cow"); close() }
+    invoker.awaitAndVerifyResults(ssc)
   }
 }
 
@@ -87,16 +91,22 @@ case class InputStreamVerifier() {
     streamingContext.start()
     println("BEGIN WAIT")
 
+
+    println("done...")
+    //println(s"got thing 2: ${readResults()}")
+  }
+
+  def awaitAndVerifyResults(streamingContext : StreamingContext): Unit = {
     val result: Future[List[(String, String)]] = notifier.getResults
     val completedResult: Future[List[(String, String)]] =
       Await.ready(result, scala.concurrent.duration.Duration("100 second"))
     println(s"result: ${completedResult.value.get.get  }")
-
-    println("done...")
-    //println(s"got thing 2: ${readResults()}")
     streamingContext.stop(stopSparkContext = false)
     Thread.sleep(200) // give some time to clean up (SPARK-1603)
   }
+
+
+
 }
 
 
