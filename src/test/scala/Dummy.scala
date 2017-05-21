@@ -10,75 +10,52 @@ import org.apache.spark.SparkConf
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.{Duration, Seconds, StreamingContext}
 import org.scalatest.{FunSuite, Outcome}
+import sun.java2d.SurfaceDataProxy.CountdownTracker
+
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
+class Dummy extends FunSuite with StreamingSuiteBase {
 
-class UnderTest extends FunSuite with StreamingSuiteBase {
+  test("lines in file are converted pairs with filename followed by sequence of all lines in file") {
+    val ssc = new StreamingContext(sc, Seconds(10))
+    UnderTest.rain(ssc)
+  }
+
+
+  protected def withFixture(test: Any): Outcome = ???
+}
+
+object UnderTest {
   val tmpFile: File = File.createTempFile("spark-streaming", "unit-test")
   val fos = new FileOutputStream(tmpFile.getAbsolutePath)
   val oos = new ObjectOutputStream(fos);
   val latch = new CountDownLatch(1)
-  var ssc: StreamingContext = null
 
   tmpFile.deleteOnExit()
 
 
-
-  def withFixture(test: Any): Outcome = ???
-
-  test("lines in file are converted pairs with filename followed by sequence of all lines in file") {
-    var dirPath = "/tmp/blah"
-    val dir: File = new File(dirPath)
-    FileUtils.deleteDirectory(dir);
-    dir.mkdir();
-
-
-    ssc = new StreamingContext(sc, Seconds(1))
-
-    val block: (StreamingContext) => DStream[(String, String)] = {
-      (ssc: StreamingContext) =>
-        val fileNameLines: DStream[(String /*filename*/ , String /*line*/ )] =
-          ssc.fileStream[Tuple2[Text, LongWritable], Text, CustomInputFormat](dirPath).
-            map {
-              case ((fileName: Text, lineNum: LongWritable), lineText: Text) =>
-                (fileName.toString, lineText.toString)
-            }
-        fileNameLines
-    }
-
-    withStreamingContext(Seconds(1), block, 2)
-
-    ssc.start()
-    println("BEGIN WAIT")
-    latch.await()
-    println(s"got thing 2: ${readResults()}")
-    ssc.stop(stopSparkContext = false)
-    Thread.sleep(200) // give some time to clean up (SPARK-1603)
-  }
-
-  def readResults(): List[(String, String)] = {
-    val ois = new ObjectInputStream(new FileInputStream(tmpFile))
-    val buf: ListBuffer[(String, String)] =  new ListBuffer[(String, String)]()
-
-    (1 to 2).foreach { i =>
-      val tuple = ois.readObject().asInstanceOf[Tuple2[String, String]] ;
-      println(s"read item from file: $tuple")
-      buf += tuple
-    }
-
-    ois.close()
-    buf.toList
-  }
-
-
-
-
-  def withStreamingContext(batchDuration: Duration,
-                           blockToRun: (StreamingContext) => DStream[(String, String)],
+  def withStreamingContext(batchDuration: Duration, blockToRun: (StreamingContext) => DStream[(String, String)],
                            numExpectedOutputs : Int,
                            logLevel: String = "warn"): Unit = {
 
+    def readResults(): List[(String, String)] = {
+      val ois = new ObjectInputStream(new FileInputStream(tmpFile))
+      val buf: ListBuffer[(String, String)] =  new ListBuffer[(String, String)]()
 
+      (1 to numExpectedOutputs).foreach { i =>
+        val tuple = ois.readObject().asInstanceOf[Tuple2[String, String]] ;
+        println(s"read item from file: $tuple")
+        buf += tuple
+      }
+
+      ois.close()
+      buf.toList
+    }
+
+    val sparkConf = new SparkConf().setAppName("test").setMaster("local[*]")
+    val ssc = new StreamingContext(sparkConf, batchDuration)
+    ssc.sparkContext.setLogLevel(logLevel)
 
     val stream: DStream[(String, String)] = blockToRun(ssc)
 
@@ -96,9 +73,14 @@ class UnderTest extends FunSuite with StreamingSuiteBase {
         }
     }
 
+    ssc.start()
+    println("BEGIN WAIT")
+    latch.await()
+    println(s"got thing 2: ${readResults()}")
+    ssc.stop(stopSparkContext = false)
+    Thread.sleep(200) // give some time to clean up (SPARK-1603)
   }
 
-  /*
 
   def main(args: Array[String]): Unit = {
     var dirPath = "/tmp/blah"
@@ -144,7 +126,5 @@ class UnderTest extends FunSuite with StreamingSuiteBase {
     ssc.start()
     ssc.awaitTermination()
   }
-   */
-
 }
 
