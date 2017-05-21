@@ -11,13 +11,13 @@ import scala.concurrent.{Future, Promise}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-case class TestResultNotifier[T](resultsDirPath: String) extends LazyLogging  {
+case class TestResultNotifier[T](resultsDirPath: String) extends LazyLogging  with Serializable {
   private[util] val resultsDataFilePath: String = resultsDirPath + File.separator + "results.dat"
   private[util] val doneSentinelFilePath: String = resultsDirPath + File.separator + "results.done"
 
   def recordResults(results: List[T]): Unit = {
     val logger = LoggerFactory.getLogger(getClass)
-    logger.info("util.TestResultNotifier here...")
+    logger.info(s"TestResultNotifier recording results: $results")
 
     try {
       val fos = new FileOutputStream(new File (resultsDataFilePath))
@@ -47,7 +47,7 @@ case class TestResultNotifier[T](resultsDirPath: String) extends LazyLogging  {
             logger.info(s"returning results: $results")
             FileUtils.deleteDirectory(new File(resultsDirPath));
           } else {
-            logger.info(s"no sentinel file at $sentinelFile yet")
+            logger.debug(s"no sentinel file at $sentinelFile yet")
           }
           Thread.sleep(10)
         }
@@ -67,7 +67,7 @@ object TestResultNotifierFactory extends LazyLogging {
   def get[T](): TestResultNotifier[T] = {
     var dir: Path = java.nio.file.Files.createTempDirectory("test-results")
     val path: String = dir.toAbsolutePath.toString
-    logger.info(s"util.TestResultNotifier directory: $path")
+    logger.info(s"initializing TestResultNotifier pointed to this directory: $path")
     TestResultNotifier[T](path)
   }
 

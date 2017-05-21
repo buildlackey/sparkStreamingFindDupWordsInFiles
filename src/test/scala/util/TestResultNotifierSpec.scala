@@ -2,6 +2,7 @@ package util
 
 import java.io.File
 
+import org.apache.commons.io.FileUtils
 import org.scalatest.{FunSuite, ShouldMatchers}
 
 import scala.concurrent.duration.Duration
@@ -46,6 +47,19 @@ class TestResultNotifierSpec extends FunSuite with ShouldMatchers {
 
     intercept[Exception] {
       notifier.recordResults(List())
+    }
+  }
+
+  test("error raised if directory becomes unavailable before recordResults() called ") {
+    val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.get()
+    val result: Future[List[(String, String)]] = notifier.getResults
+
+    notifier.recordResults(List())
+
+    FileUtils.deleteDirectory(new File(notifier.resultsDirPath))
+
+    intercept[java.util.concurrent.TimeoutException] {
+      Await.ready(result, Duration("500 millisecond"))
     }
   }
 }
