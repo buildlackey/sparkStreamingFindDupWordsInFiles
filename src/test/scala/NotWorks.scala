@@ -13,6 +13,7 @@ import org.apache.spark.util.LongAccumulator
 import org.scalatest.{FunSuite, Outcome}
 import util.{TestResultNotifier, TestResultNotifierFactory}
 
+import scala.collection.immutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{Await, Future}
 
@@ -29,19 +30,17 @@ class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase 
     confToTweak
   }
 
-
   def withFixture(test: Any): Outcome = ???
 
   test("lines in file are represented as pairs consisting of 'filename' followed by 'sequence of all lines in file'") {
     var dirPath = "/tmp/blah"
     val dir: File = new File(dirPath)
-    FileUtils.deleteDirectory(dir);
-    dir.mkdir();
+    FileUtils.deleteDirectory(dir)
+    dir.mkdir()
 
     ssc = new StreamingContext(sc, Seconds(1))
-    val invoker = new InputStreamVerifier()
 
-    val block: (StreamingContext) => DStream[(String, String)] = {
+    val codeBlock: (StreamingContext) => DStream[(String, String)] = {
       (ssc: StreamingContext) =>
         val fileNameLines: DStream[(String /*filename*/ , String /*line*/ )] =
           ssc.fileStream[Tuple2[Text, LongWritable], Text, CustomInputFormat](dirPath).
@@ -52,52 +51,42 @@ class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase 
         fileNameLines
     }
 
-    val accumCounter: LongAccumulator = sc.longAccumulator("counter")
-
-
-    invoker.runWithStreamingContext(ssc, block, 2, accumCounter )
+    val verifier = InputStreamVerifier[(String,String)](2)
+    verifier.runWithStreamingContext(ssc, codeBlock)
 
     Thread.sleep(1500) // give the code that creates the DStream time to start up
-    new PrintWriter(dirPath + "/some.input.for.the.test1") {
-      write("moo cow\brown cow"); close()
-    }
-    new PrintWriter(dirPath + "/some.input.for.the.test2") {
-      write("moo cow\brown cow"); close()
-    }
-    invoker.awaitAndVerifyResults(ssc)
-  }
-}
 
-
-case class InputStreamVerifier() {
-  val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.getForNResults(2)
-
-  def runWithStreamingContext(streamingContext: StreamingContext,
-                              blockToRun: (StreamingContext) => DStream[(String, String)],
-                              numExpectedOutputs: Int,
-                             counter : LongAccumulator ,
-                              logLevel: String = "warn"): Unit = {
-    val stream: DStream[(String, String)] = blockToRun(streamingContext)
-    stream.foreachRDD {
-      rdd => {
-        rdd.foreach { case ((fileName, lineContent)) =>
-          notifier.recordResult((fileName, lineContent))
+    val testDataGenerationFunc: () => Unit = {
+      () =>
+        new PrintWriter(dirPath + "/test1") {
+          write("moo cow\nbrown cow");
+          close()
         }
-      }
+        new PrintWriter(dirPath + "/test2") {
+          write("moo cow\nbrown cow");
+          close()
+        }
+        ()
     }
-    streamingContext.start()
-  }
+
+    testDataGenerationFunc()
+
+    val expected = List(("test1", "moo cow"), ("test2", "moo cow"), ("test1", "brown cow"), ("test2", "brown cow"))
+    verifier.awaitAndVerifyResults(ssc, expected)
 
 
-  def awaitAndVerifyResults(streamingContext: StreamingContext): Unit = {
-    val result: Future[List[(String, String)]] = notifier.getResults
-    val completedResult: Future[List[(String, String)]] =
-      Await.ready(result, scala.concurrent.duration.Duration("100 second"))
-    println(s"result: ${completedResult.value.get.get}")
-    streamingContext.stop(stopSparkContext = false)
-    Thread.sleep(200) // give some time to clean up (SPARK-1603)
+    InputStreamTestingContext(
+      codeBlock,
+      testDataGenerationFunc,
+      scala.concurrent.duration.Duration("1500 milliseconds"),
+      expected,
+      false)
+
   }
 }
+
+
+
 
 
 

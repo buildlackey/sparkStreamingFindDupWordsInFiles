@@ -18,7 +18,6 @@ class TestResultNotifierSpec extends FunSuite {
 
     assert(result.value.isEmpty)
 
-
     intercept[java.util.concurrent.TimeoutException] {
       Await.ready(result, Duration("1 millisecond"))
     }
