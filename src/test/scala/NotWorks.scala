@@ -1,5 +1,5 @@
 import java.io._
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 import java.util.concurrent.{BlockingQueue, CountDownLatch, LinkedBlockingQueue}
 
 import com.holdenkarau.spark.testing.StreamingSuiteBase
@@ -9,6 +9,7 @@ import org.apache.hadoop.io.{LongWritable, Text}
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.{Duration, Seconds, StreamingContext}
+import org.apache.spark.util.LongAccumulator
 import org.scalatest.{FunSuite, Outcome}
 import util.{TestResultNotifier, TestResultNotifierFactory}
 
@@ -16,12 +17,11 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.{Await, Future}
 
 
-
 class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase {
 
   var ssc: StreamingContext = null
 
-  override def useManualClock: Boolean = false      // doesn't seem to be respected, but leaving in to show intent
+  override def useManualClock: Boolean = false // doesn't seem to be respected, but leaving in to show intent
 
   override def conf = {
     val confToTweak = super.conf
@@ -40,41 +40,6 @@ class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase 
 
     ssc = new StreamingContext(sc, Seconds(1))
     val invoker = new InputStreamVerifier()
-    invoker.invokeTest(ssc)
-    Thread.sleep(1500) // give the code that creates the DStream time to start up
-    new PrintWriter(dirPath + "/some.input.for.the.test1") { write("moo cow\brown cow"); close() }
-    new PrintWriter(dirPath + "/some.input.for.the.test2") { write("moo cow\brown cow"); close() }
-    invoker.awaitAndVerifyResults(ssc)
-  }
-}
-
-
-case class InputStreamVerifier() {
-  val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.get()
-
-  def withStreamingContext(streamingContext : StreamingContext,
-                           blockToRun: (StreamingContext) => DStream[(String, String)],
-                           numExpectedOutputs : Int,
-                           logLevel: String = "warn"): Unit = {
-    val stream: DStream[(String, String)] = blockToRun(streamingContext)
-    val buf: ListBuffer[(String, String)] = new ListBuffer[(String, String)]()
-     stream.foreachRDD {                                                              // TODO - make work across RDD's
-      rdd => {
-        rdd.zipWithIndex().foreach { case ((fileName, lineContent), count: Long) =>
-          println(s"filename: $fileName")
-          println(s"lineContent: $lineContent")
-          buf += ((fileName, lineContent))
-          if (count == (numExpectedOutputs-1)) {
-            notifier.recordResults(buf.toList)
-            println("CLOSED")
-          }
-        }
-      }
-    }
-  }
-
-  def invokeTest(streamingContext : StreamingContext): Unit = {
-    var dirPath = "/tmp/blah"     // defined in 2 places !  TODO  - fix
 
     val block: (StreamingContext) => DStream[(String, String)] = {
       (ssc: StreamingContext) =>
@@ -87,26 +52,51 @@ case class InputStreamVerifier() {
         fileNameLines
     }
 
-    withStreamingContext(streamingContext, block, 2)
+    val accumCounter: LongAccumulator = sc.longAccumulator("counter")
+
+
+    invoker.runWithStreamingContext(ssc, block, 2, accumCounter )
+
+    Thread.sleep(1500) // give the code that creates the DStream time to start up
+    new PrintWriter(dirPath + "/some.input.for.the.test1") {
+      write("moo cow\brown cow"); close()
+    }
+    new PrintWriter(dirPath + "/some.input.for.the.test2") {
+      write("moo cow\brown cow"); close()
+    }
+    invoker.awaitAndVerifyResults(ssc)
+  }
+}
+
+
+case class InputStreamVerifier() {
+  val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.getForNResults(2)
+
+  def runWithStreamingContext(streamingContext: StreamingContext,
+                              blockToRun: (StreamingContext) => DStream[(String, String)],
+                              numExpectedOutputs: Int,
+                             counter : LongAccumulator ,
+                              logLevel: String = "warn"): Unit = {
+    val stream: DStream[(String, String)] = blockToRun(streamingContext)
+    stream.foreachRDD {
+      rdd => {
+        rdd.foreach { case ((fileName, lineContent)) =>
+          notifier.recordResult((fileName, lineContent))
+        }
+      }
+    }
     streamingContext.start()
-    println("BEGIN WAIT")
-
-
-    println("done...")
-    //println(s"got thing 2: ${readResults()}")
   }
 
-  def awaitAndVerifyResults(streamingContext : StreamingContext): Unit = {
+
+  def awaitAndVerifyResults(streamingContext: StreamingContext): Unit = {
     val result: Future[List[(String, String)]] = notifier.getResults
     val completedResult: Future[List[(String, String)]] =
       Await.ready(result, scala.concurrent.duration.Duration("100 second"))
-    println(s"result: ${completedResult.value.get.get  }")
+    println(s"result: ${completedResult.value.get.get}")
     streamingContext.stop(stopSparkContext = false)
     Thread.sleep(200) // give some time to clean up (SPARK-1603)
   }
-
-
-
 }
 
 

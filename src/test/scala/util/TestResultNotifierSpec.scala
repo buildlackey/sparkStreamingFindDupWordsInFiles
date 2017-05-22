@@ -12,8 +12,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class TestResultNotifierSpec extends FunSuite with ShouldMatchers {
 
-  test("getResults() call returns results only after recordResults() has been called (empty results case)") {
-    val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.get()
+  test("getResults() call returns results only after recordResults() has been called") {
+    val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.getForNResults(0)
     val result: Future[List[(String, String)]] = notifier.getResults
 
     result.value shouldBe None
@@ -22,45 +22,48 @@ class TestResultNotifierSpec extends FunSuite with ShouldMatchers {
       Await.ready(result, Duration("1 millisecond"))
     }
 
-    notifier.recordResults(List())
+    val item = ("dummy-value", "dummy")
+    notifier.recordResult(item)
     new File(notifier.doneSentinelFilePath).exists shouldBe true
 
     val completedResult: Future[List[(String, String)]] = Await.ready(result, Duration("100 millisecond"))
-    completedResult.value.get.get  shouldBe List()
+    completedResult.value.get.get  shouldBe List(item)
   }
 
   test("getResults() returns same results as what was recorded") {
-    val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.get()
-    val result: Future[List[(String, String)]] = notifier.getResults
-
-    val tupleList = List(("blah", "foo"), ("hi", "ho"))
-    notifier.recordResults(tupleList)
-    val completedResult: Future[List[(String, String)]] = Await.ready(result, Duration("100 millisecond"))
-    completedResult.value.get.get  shouldBe tupleList
+    runTestWithNResultsExpected(2)
   }
 
-  test("error raised if recordResults() called more than once") {
-    val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.get()
-    val result: Future[List[(String, String)]] = notifier.getResults
-
-    notifier.recordResults(List())
-
-    intercept[Exception] {
-      notifier.recordResults(List())
-    }
+  test("error not raised if recordResults() called more than number of expected results") {
+    runTestWithNResultsExpected(1)
   }
 
   test("error raised if directory becomes unavailable before recordResults() called ") {
-    val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.get()
+    val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.getForNResults(2)
     val result: Future[List[(String, String)]] = notifier.getResults
 
-    notifier.recordResults(List())
+    val tupleList = List(("blah", "foo"), ("hi", "ho"))
+    tupleList.foreach {
+      notifier.recordResult
+    }
 
     FileUtils.deleteDirectory(new File(notifier.resultsDirPath))
 
     intercept[java.util.concurrent.TimeoutException] {
       Await.ready(result, Duration("500 millisecond"))
     }
+  }
+
+  private def runTestWithNResultsExpected(numResultsExpected: Int) = {
+    val tupleList = List(("blah", "foo"), ("hi", "ho"))
+    val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.getForNResults(numResultsExpected)
+    val result: Future[List[(String, String)]] = notifier.getResults
+
+    tupleList.foreach {
+      notifier.recordResult
+    }
+    val completedResult: Future[List[(String, String)]] = Await.ready(result, Duration("100 millisecond"))
+    completedResult.value.get.get.toSet shouldBe tupleList.toSet
   }
 }
 
