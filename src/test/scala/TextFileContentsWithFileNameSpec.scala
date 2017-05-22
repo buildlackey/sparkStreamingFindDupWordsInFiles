@@ -24,7 +24,7 @@ class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase 
 
   override def useManualClock: Boolean = false // doesn't seem to be respected, but leaving in to show intent
 
-  override def conf = {
+  override def conf: SparkConf = {
     val confToTweak = super.conf
     confToTweak.set("spark.streaming.clock", "org.apache.spark.streaming.util.SystemClock")
     confToTweak
@@ -38,8 +38,6 @@ class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase 
     FileUtils.deleteDirectory(dir)
     dir.mkdir()
 
-    ssc = new StreamingContext(sc, Seconds(1))
-
     val codeBlock: (StreamingContext) => DStream[(String, String)] = {
       (ssc: StreamingContext) =>
         val fileNameLines: DStream[(String /*filename*/ , String /*line*/ )] =
@@ -50,11 +48,6 @@ class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase 
             }
         fileNameLines
     }
-
-    val verifier = InputStreamVerifier[(String,String)](2)
-    verifier.runWithStreamingContext(ssc, codeBlock)
-
-    Thread.sleep(1500) // give the code that creates the DStream time to start up
 
     val testDataGenerationFunc: () => Unit = {
       () =>
@@ -69,18 +62,16 @@ class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase 
         ()
     }
 
-    testDataGenerationFunc()
 
     val expected = List(("test1", "moo cow"), ("test2", "moo cow"), ("test1", "brown cow"), ("test2", "brown cow"))
-    verifier.awaitAndVerifyResults(ssc, expected)
-
 
     InputStreamTestingContext(
+      sc,
       codeBlock,
       testDataGenerationFunc,
       scala.concurrent.duration.Duration("1500 milliseconds"),
       expected,
-      false)
+      false).run()
 
   }
 }
