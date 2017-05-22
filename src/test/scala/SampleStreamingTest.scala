@@ -1,7 +1,6 @@
-import com.holdenkarau.spark.testing.{SharedSparkContext, StreamingSuiteBase}
-import org.apache.spark.rdd.RDD
-import org.apache.spark.streaming.{Seconds, StreamingContext}
+import com.holdenkarau.spark.testing.StreamingSuiteBase
 import org.apache.spark.streaming.dstream.DStream
+import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.scalatest.{FunSuite, Outcome}
 
 

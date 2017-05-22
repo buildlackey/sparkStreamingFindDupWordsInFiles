@@ -3,12 +3,10 @@ package util
 import java.io.File
 
 import org.apache.commons.io.FileUtils
-import org.scalatest.{FunSuite}
+import org.scalatest.FunSuite
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success, Try}
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class TestResultNotifierSpec extends FunSuite {
 

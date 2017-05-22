@@ -18,14 +18,13 @@
 // scalastyle:off println
 
 
-import org.apache.spark.streaming.dstream.{InputDStream, DStream}
+import org.apache.spark.SparkConf
+import org.apache.spark.rdd.RDD
+import org.apache.spark.streaming.dstream.{DStream, InputDStream}
+import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 import scala.collection.mutable
 import scala.collection.mutable.Queue
-
-  import org.apache.spark.SparkConf
-  import org.apache.spark.rdd.RDD
-  import org.apache.spark.streaming.{Seconds, StreamingContext}
 
   object QueueStream {
 

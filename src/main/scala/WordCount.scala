@@ -1,14 +1,10 @@
 import java.lang
-import scala.collection.mutable.ListBuffer
 
 import org.apache.hadoop.io.{LongWritable, Text}
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat
 import org.apache.spark.SparkConf
-import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.{Seconds, StreamingContext}
-
-import scala.collection.mutable
 
 
 object WordCount {

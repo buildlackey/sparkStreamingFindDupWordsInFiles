@@ -9,8 +9,8 @@ import org.apache.commons.io.FileUtils
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Future, Promise}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, Promise}
 
 
 class TestResultNotifier[T](val resultsDirPath: String,
@@ -92,5 +92,4 @@ object TestResultNotifierFactory extends LazyLogging {
     logger.info(s"initializing TestResultNotifier pointed to this directory: $path")
     new TestResultNotifier[T](path, numExpectedResults)
   }
-
 }

@@ -1,21 +1,12 @@
 import java.io._
-import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
-import java.util.concurrent.{BlockingQueue, CountDownLatch, LinkedBlockingQueue}
 
 import com.holdenkarau.spark.testing.StreamingSuiteBase
-import com.typesafe.config.ConfigFactory
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.io.{LongWritable, Text}
 import org.apache.spark.SparkConf
+import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.DStream
-import org.apache.spark.streaming.{Duration, Seconds, StreamingContext}
-import org.apache.spark.util.LongAccumulator
 import org.scalatest.{FunSuite, Outcome}
-import util.{TestResultNotifier, TestResultNotifierFactory}
-
-import scala.collection.immutable
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Await, Future}
 
 
 class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase {
