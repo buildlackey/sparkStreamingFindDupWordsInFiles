@@ -3,20 +3,21 @@ package util
 import java.io.File
 
 import org.apache.commons.io.FileUtils
-import org.scalatest.{FunSuite, ShouldMatchers}
+import org.scalatest.{FunSuite}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class TestResultNotifierSpec extends FunSuite with ShouldMatchers {
+class TestResultNotifierSpec extends FunSuite {
 
   test("getResults() call returns results only after recordResults() has been called") {
     val notifier: TestResultNotifier[(String, String)] = TestResultNotifierFactory.getForNResults(0)
     val result: Future[List[(String, String)]] = notifier.getResults
 
-    result.value shouldBe None
+    assert(result.value.isEmpty)
+
 
     intercept[java.util.concurrent.TimeoutException] {
       Await.ready(result, Duration("1 millisecond"))
@@ -24,10 +25,12 @@ class TestResultNotifierSpec extends FunSuite with ShouldMatchers {
 
     val item = ("dummy-value", "dummy")
     notifier.recordResult(item)
-    new File(notifier.doneSentinelFilePath).exists shouldBe true
+    assert(new File(notifier.doneSentinelFilePath).exists )
 
     val completedResult: Future[List[(String, String)]] = Await.ready(result, Duration("100 millisecond"))
-    completedResult.value.get.get  shouldBe List(item)
+
+    assert(completedResult.value.get.get.equals(List(item)))
+
   }
 
   test("getResults() returns same results as what was recorded") {
@@ -63,7 +66,7 @@ class TestResultNotifierSpec extends FunSuite with ShouldMatchers {
       notifier.recordResult
     }
     val completedResult: Future[List[(String, String)]] = Await.ready(result, Duration("100 millisecond"))
-    completedResult.value.get.get.toSet shouldBe tupleList.toSet
+    assert(completedResult.value.get.get.toSet .equals( tupleList.toSet ))
   }
 }
 
