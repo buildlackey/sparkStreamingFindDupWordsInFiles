@@ -73,7 +73,7 @@ object FindDupWordsInFiles {
       }
 
     val countsAndOccurrencesOfDupsOnlyByWord: DStream[(String, (Int, List[WordOccurrence]))] =
-      countsAndOccurrencesByWord.filter { case (word, (count, occurrences)) => count > 1 }  // filter out non dups
+      countsAndOccurrencesByWord.filter { case (word, (count, occurrences)) => count > 1 } // filter out non dups
 
     countsAndOccurrencesOfDupsOnlyByWord.foreachRDD {
       (rdd: RDD[(String, (Int, List[WordOccurrence]))]) =>

@@ -17,12 +17,12 @@ import org.apache.hadoop.mapreduce.{InputSplit, RecordReader, TaskAttemptContext
   * [[https://halfvim.github.io/2016/06/28/FileInputDStream-in-Spark-Streaming/ here.]]
   *
   */
-class CustomRecordReader(conf : Configuration )
-  extends RecordReader[Tuple2[Text,LongWritable], Text] with LazyLogging {
+class CustomRecordReader(conf: Configuration)
+  extends RecordReader[Tuple2[Text, LongWritable], Text] with LazyLogging {
   private val lineRecordReader: LineRecordReader = new LineRecordReader
   private var innerValue: Text = null
   private var innerKey: LongWritable = null
-  private var key: Tuple2[Text,LongWritable] = null
+  private var key: Tuple2[Text, LongWritable] = null
   private var value: Text = null
   private var filename: String = ""
 
@@ -47,8 +47,8 @@ class CustomRecordReader(conf : Configuration )
       line = innerValue.getBytes
 
       innerKey = lineRecordReader.getCurrentKey
-      if (innerKey == null) {   // Maybe too paranoid.. but can't hurt
-        logger.warn(s"null line number key in file $filename at line $innerValue" )
+      if (innerKey == null) { // Maybe too paranoid.. but can't hurt
+        logger.warn(s"null line number key in file $filename at line $innerValue")
         innerKey = new LongWritable(-1)
       }
     }
@@ -61,9 +61,9 @@ class CustomRecordReader(conf : Configuration )
     }
 
     if (key == null) {
-      key = (new Text, new LongWritable(0))     // TODO - can't we just init this once ?
+      key = (new Text, new LongWritable(0)) // TODO - can't we just init this once ?
     }
-    if (value == null) {                        // TODO - can't we just init this once ?
+    if (value == null) { // TODO - can't we just init this once ?
       value = new Text
     }
     this.key._1.set(this.filename)
@@ -72,7 +72,7 @@ class CustomRecordReader(conf : Configuration )
     true
   }
 
-  def getCurrentKey: Tuple2[Text,LongWritable] = {
+  def getCurrentKey: Tuple2[Text, LongWritable] = {
     key
   }
 

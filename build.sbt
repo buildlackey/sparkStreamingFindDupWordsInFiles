@@ -2,7 +2,17 @@ name := "streaming-example"
 
 version := "1.0"
 
-scalaVersion :=  "2.11.6"
+scalaVersion := "2.11.6"
+
+lazy val root = (project in file("."))
+  .settings(
+    name := "streaming-example",
+    version := "1.0"
+  ).dependsOn(SparkTestProjectInGit)
+
+
+lazy val SparkTestProjectInGit = RootProject( uri("git://github.com/buildlackey/spark-testing-base.git") )
+
 
 // Make sure scalaVersion  is respected.
 // See: http://stackoverflow.com/questions/22551430/in-sbt-0-13-does-scalaversion-still-control-the-version-of-scala-used-for-compi

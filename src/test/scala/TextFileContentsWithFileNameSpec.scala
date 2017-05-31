@@ -1,27 +1,14 @@
 import java.io._
 
-import com.holdenkarau.spark.testing.StreamingSuiteBase
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.io.{LongWritable, Text}
-import org.apache.spark.SparkConf
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.DStream
-import org.scalatest.{FunSuite, Outcome}
+import org.scalatest.FunSuite
+import com.holdenkarau.spark.testing.receiver.{InputStreamSuiteBase, InputStreamTestingContext}
 
 
-class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase {
-
-  var ssc: StreamingContext = null
-
-  override def useManualClock: Boolean = false // doesn't seem to be respected, but leaving in to show intent
-
-  override def conf: SparkConf = {
-    val confToTweak = super.conf
-    confToTweak.set("spark.streaming.clock", "org.apache.spark.streaming.util.SystemClock")
-    confToTweak
-  }
-
-  def withFixture(test: Any): Outcome = ???
+class TextFileContentsWithFileNameSpec extends FunSuite with InputStreamSuiteBase {
 
   test("lines in file are represented as pairs consisting of 'filename' followed by 'sequence of all lines in file'") {
     var dirPath = "/tmp/blah"
@@ -29,7 +16,7 @@ class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase 
     FileUtils.deleteDirectory(dir)
     dir.mkdir()
 
-    val codeBlock: (StreamingContext) => DStream[(String, String)] = {
+    val dstreamCreationFunc: (StreamingContext) => DStream[(String, String)] = {
       (ssc: StreamingContext) =>
         val fileNameLines: DStream[(String /*filename*/ , String /*line*/ )] =
           ssc.fileStream[Tuple2[Text, LongWritable], Text, CustomInputFormat](dirPath).
@@ -54,16 +41,16 @@ class TextFileContentsWithFileNameSpec extends FunSuite with StreamingSuiteBase 
     }
 
 
-    val expected = List(("test1", "moo cow"), ("test2", "moo cow"), ("test1", "brown cow"), ("test2", "brown cow"))
+    val expectedResult =
+      List(("test1", "moo cow"), ("test2", "moo cow"), ("test1", "brown cow"), ("test2", "brown cow"))
 
     InputStreamTestingContext(
-      sc,
-      codeBlock,
-      testDataGenerationFunc,
-      scala.concurrent.duration.Duration("1500 milliseconds"),
-      expected,
-      false).run()
-
+        sparkContext = sc,
+        dStreamCreationFunc = dstreamCreationFunc,
+        testDataGenerationFunc =   testDataGenerationFunc,
+        pauseDuration = scala.concurrent.duration.Duration("1500 milliseconds"),
+        expectedResult = expectedResult)
+        .run()
   }
 }
 
